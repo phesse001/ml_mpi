@@ -135,11 +135,14 @@ main(int argc, char * argv[])
   /* Compute local number of viewers. */
   size_t const ln = (rank + 1) * base > n ? n - rank * base : base;
 
-  size_t * sc = malloc(p * sizeof(*sc));
+  int * sc = malloc(p * sizeof(*sc));
+  assert(sc);
 
-  size_t * dis = malloc(p * sizeof(*dis));
+  int * dis = malloc(p * sizeof(*dis));
+  assert(dis);
 
-  double * rc_buf = malloc(base * sizeof(*rec_buf));
+  double * rc_buf = malloc(base * sizeof(*rc_buf));
+  assert(rc_buf);
 
   size_t dis_sum = 0;
   for (int r = 0; r < p; r++) {
@@ -149,9 +152,12 @@ main(int argc, char * argv[])
     sc[r] = rn;
   }
 
-  MPI_Scatterv(rating, sc, dis,
+  ret = MPI_Scatterv(rating, sc, dis,
                  MPI_DOUBLE, rc_buf, base,
                  MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+assert(MPI_SUCCESS == ret);
+
 
 #if 0
   /* Send viewer data to rest of processes. */
@@ -188,8 +194,9 @@ main(int argc, char * argv[])
       fflush(stdout);
       scanf("%lf", &urating[j]);
     }
-    ret = MPI_Bcast(&urating, m-1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    assert(MPI_SUCCESS == ret);
+  }
+  ret = MPI_Bcast(urating, m-1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  assert(MPI_SUCCESS == ret);
 
     #if 0
 
@@ -205,13 +212,14 @@ main(int argc, char * argv[])
   #endif
 
   /* Allocate more memory. */
-  double * distance;
-
+  double * distance = calloc(ln, sizeof(*distance));
+ /*
   if (0 == rank) {
     distance = calloc(n, sizeof(*distance));
   } else {
     distance = calloc(ln, sizeof(*distance));
   }
+  */
 
   /* Check for success. */
   assert(distance);
@@ -235,9 +243,11 @@ main(int argc, char * argv[])
     assert(MPI_SUCCESS == ret);
   }
   #endif
-  size_t * rcounts = malloc(p * sizeof(*sc));
+  int * rcounts = malloc(p * sizeof(*sc));
+  assert(rcounts);
 
-  size_t * rdis = malloc(p * sizeof(*dis));
+  int * rdis = malloc(p * sizeof(*dis));
+  assert(rdis);
 
   size_t rdis_sum = 0;
   for (int r = 0; r < p; r++) {
@@ -247,17 +257,16 @@ main(int argc, char * argv[])
     rdis_sum += rn;
   }
 
-  double *rbuf = malloc(n*sizeof(*rbuf));
-
-  MPI_Gatherv(distance, rn, MPI_DOUBLE, rbuf, rcounts, rdis, MPI_DOUBLE,
-                                                             0, MPI_COMM_WORLD);
-  if (0 == rank) {
     struct distance_metric * distance2 = malloc(n * sizeof(*distance2));
     assert(distance2);
 
+    ret = MPI_Gatherv(distance, ln, MPI_DOUBLE, distance2, rcounts, rdis, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    assert(MPI_SUCCESS == ret);
+
+    if(rank == 0)
+    {
     for (size_t i = 0; i < n; i++) {
       distance2[i].viewer_id = i;
-      distance2[i].distance = distance[i];
     }
 
     /* Sort distances. */
@@ -289,8 +298,12 @@ main(int argc, char * argv[])
     printf("The predicted rating for movie five is %.1lf.\n", sum / k);
 
     free(distance2);
-  }
-
+    free(sc);
+    free(dis);
+    free(rc_buf);
+    free(rcounts);
+    free(rdis);
+}
   /* Deallocate memory. */
   free(rating);
   free(urating);
