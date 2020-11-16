@@ -106,6 +106,12 @@ main(int argc, char * argv[])
     assert(!ret);
   }
 
+  ret = MPI_Bcast(&n, 1, MPI_SIZE_T, 0, MPI_COMM_WORLD);
+  assert(MPI_SUCCESS == ret);
+  ret = MPI_Bcast(&m, 1, MPI_SIZE_T, 0, MPI_COMM_WORLD);
+  assert(MPI_SUCCESS == ret);
+
+ #if 0
   /* Send number of viewers and movies to rest of processes. */
   if (0 == rank) {
     for (int r = 1; r < p; r++) {
@@ -122,7 +128,7 @@ main(int argc, char * argv[])
         MPI_STATUS_IGNORE);
       assert(MPI_SUCCESS == ret);
   }
-
+#endif
   /* Compute base number of viewers. */
   size_t const base = 1 + ((n - 1) / p); // ceil(n / p)
 
